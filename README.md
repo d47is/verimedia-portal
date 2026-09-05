@@ -2,7 +2,7 @@
 
 **VeriMedia Portal** is a multi-modal forensic web application designed to detect AI-generated and manipulated media. By analyzing images, audio, and video, the platform provides journalists, researchers, and citizens with actionable **Explainable AI (XAI)** insights rather than just binary scores.
 
-🌍 **Live Demo:** [Insert Netlify Link Here]
+🌍 **Live Demo:** [https://verimedia-portal.vercel.app/]
 
 ## 🎯 Hackathon Evaluation Alignment
 
