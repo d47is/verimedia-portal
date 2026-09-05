@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VeriMedia Portal — AI Media Authenticity Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: { 950: '#070b14', 900: '#0b1220', 800: '#111827' },
+            signal: { cyan: '#22d3ee', indigo: '#6366f1', amber: '#f59e0b', red: '#f43f5e', green: '#34d399' }
+          },
+          fontFamily: {
+            sans: ['"Segoe UI"', 'Inter', 'system-ui', 'sans-serif'],
+            mono: ['Consolas', '"IBM Plex Mono"', 'ui-monospace', 'monospace']
+          },
+          boxShadow: {
+            glow: '0 0 40px rgba(34, 211, 238, 0.12)',
+            panel: '0 20px 60px rgba(0,0,0,0.45)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(1200px 600px at 12% -10%, rgba(99,102,241,.22), transparent 55%),
+        radial-gradient(900px 500px at 90% 0%, rgba(34,211,238,.12), transparent 50%),
+        #070b14;
+    }
+    .glass {
+      background: linear-gradient(180deg, rgba(17,24,39,.72), rgba(11,18,32,.55));
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(148,163,184,.14);
+    }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(148,163,184,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,.06) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+    .status-pulse {
+      animation: statusPulse 1.8s ease-in-out infinite;
+    }
+    @keyframes statusPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); }
+      50% { box-shadow: 0 0 0 8px rgba(52,211,153,0); }
+    }
+    .scanline {
+      position: absolute; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+      animation: scan 2.2s linear infinite;
+      opacity: .85;
+    }
+    @keyframes scan { from { top: 0; } to { top: 100%; } }
+    .term-cursor::after {
+      content: '▍';
+      animation: blink 1s step-end infinite;
+      color: #22d3ee;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .heatmap-on {
+      filter: contrast(1.35) saturate(1.8) hue-rotate(310deg);
+    }
+    .heatmap-overlay {
+      mix-blend-mode: hard-light;
+      background:
+        radial-gradient(circle at 42% 38%, rgba(244,63,94,.85), transparent 32%),
+        radial-gradient(circle at 58% 46%, rgba(245,158,11,.7), transparent 26%),
+        radial-gradient(circle at 48% 62%, rgba(34,211,238,.45), transparent 30%),
+        repeating-linear-gradient(0deg, rgba(244,63,94,.18) 0 2px, transparent 2px 5px);
+      opacity: 0;
+      transition: opacity .35s ease;
+      pointer-events: none;
+    }
+    .heatmap-overlay.active { opacity: 1; }
+    .gauge-ring {
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .drop-active {
+      border-color: #22d3ee !important;
+      background: rgba(34,211,238,.08) !important;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+    .nav-link.active { color: #22d3ee; }
+    .nav-link.active::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: -10px; height: 2px;
+      background: #22d3ee;
+    }
+  </style>
+</head>
+<body class="text-slate-200 font-sans min-h-screen">
+  <div class="fixed inset-0 grid-bg pointer-events-none opacity-40"></div>
+
+  <!-- NAV -->
+  <header class="sticky top-0 z-50 border-b border-slate-800/80 bg-ink-950/75 backdrop-blur-xl">
+    <div class="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between gap-6">
+      <a href="#home" class="flex items-center gap-3 shrink-0 group">
+        <span class="relative grid place-items-center w-10 h-10 rounded-xl bg-indigo-500/20 border border-cyan-400/30 shadow-glow">
+          <i class="fa-solid fa-shield-halved text-cyan-300"></i>
+          <i class="fa-regular fa-eye absolute text-[10px] text-indigo-200 translate-y-[1px]"></i>
+        </span>
+        <div>
+          <div class="text-sm font-semibold tracking-wide text-white">VeriMedia Portal</div>
+          <div class="text-[10px] uppercase tracking-[0.22em] text-slate-400">AI Media Authenticity</div>
+        </div>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-7 text-sm text-slate-400">
+        <a href="#home" data-nav="home" class="nav-link relative active hover:text-white transition">Home</a>
+        <a href="#workspace" data-nav="image" class="nav-link relative hover:text-white transition">Image Forensics</a>
+        <a href="#workspace" data-nav="audio" class="nav-link relative hover:text-white transition">Audio Analyzer</a>
+        <a href="#workspace" data-nav="video" class="nav-link relative hover:text-white transition">Video Scan</a>
+        <a href="#api" data-nav="api" class="nav-link relative hover:text-white transition">API Docs</a>
+      </nav>
+
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="hidden md:inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
+          <span class="status-pulse inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+          Forensics Engine v2.4 Active
+        </span>
+        <button id="loginBtn" class="rounded-lg bg-white/5 hover:bg-white/10 border border-slate-600 px-3.5 py-1.5 text-sm font-medium text-white transition">
+          <i class="fa-solid fa-user-lock mr-1.5 text-cyan-300"></i>Reporter Login
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="relative z-10">
+    <!-- HERO -->
+    <section id="home" class="max-w-[1440px] mx-auto px-6 pt-14 pb-8">
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div class="max-w-3xl">
+          <div class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.28em] text-cyan-300/90 mb-4">
+            <i class="fa-solid fa-satellite-dish"></i> National-grade verification desk
+          </div>
+          <h1 class="text-4xl md:text-5xl font-semibold text-white leading-tight tracking-tight">
+            Verify the Truth in Synthetic Media.
+          </h1>
+          <p class="mt-4 text-lg text-slate-400 max-w-2xl">
+            Empowering journalists, researchers, and citizens to detect AI-generated and manipulated images, audio, and video.
+          </p>
+        </div>
+        <div class="flex gap-6 text-sm">
+          <div class="glass rounded-xl px-4 py-3 min-w-[120px]">
+            <div class="text-2xl font-semibold text-white">99.2%</div>
+            <div class="text-slate-400 text-xs mt-1">Model precision</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3 min-w-[120px]">
+            <div class="text-2xl font-semibold text-white">C2PA</div>
+            <div class="text-slate-400 text-xs mt-1">Content credentials</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3 min-w-[120px]">
+            <div class="text-2xl font-semibold text-cyan-300">3s</div>
+            <div class="text-slate-400 text-xs mt-1">Typical scan time</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKSPACE -->
+    <section id="workspace" class="max-w-[1440px] mx-auto px-6 pb-16">
+      <div class="grid lg:grid-cols-12 gap-6 items-start">
+        <!-- LEFT -->
+        <aside class="lg:col-span-4 space-y-5">
+          <div class="glass rounded-2xl p-5 shadow-panel">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-sm font-semibold text-white tracking-wide">Input &amp; Controls</h2>
+              <span id="modeChip" class="text-[10px] uppercase tracking-widest text-indigo-300 bg-indigo-500/15 border border-indigo-400/20 px-2 py-1 rounded">Image Forensics</span>
+            </div>
+
+            <div id="dropzone" class="relative rounded-xl border-2 border-dashed border-slate-600/80 bg-slate-900/40 p-6 text-center cursor-pointer transition hover:border-cyan-400/50">
+              <input id="fileInput" type="file" accept="image/*,audio/*,video/*,.wav,.mp3,.mp4,.webm" class="hidden" />
+              <div class="mx-auto w-12 h-12 rounded-full bg-cyan-400/10 grid place-items-center mb-3">
+                <i class="fa-solid fa-cloud-arrow-up text-cyan-300 text-lg"></i>
+              </div>
+              <p class="text-sm text-white font-medium">Drag &amp; drop media</p>
+              <p class="text-xs text-slate-400 mt-1">Images, audio, or video — files or source URLs</p>
+              <p id="fileLabel" class="mt-3 text-xs font-mono text-cyan-200/90 truncate">No file selected</p>
+            </div>
+
+            <div class="mt-4">
+              <label class="text-[11px] uppercase tracking-widest text-slate-400">Source URL</label>
+              <div class="mt-1.5 flex gap-2">
+                <input id="urlInput" type="url" placeholder="https://example.com/asset.jpg"
+                  class="flex-1 rounded-lg bg-slate-950/70 border border-slate-700 px-3 py-2 text-sm outline-none focus:border-cyan-400/60" />
+                <button id="analyzeBtn" class="rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-ink-950 hover:opacity-90 transition">
+                  Analyze
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-5">
+            <h3 class="text-sm font-semibold text-white mb-1">Quick Presets</h3>
+            <p class="text-xs text-slate-400 mb-4">Load curated case files used in newsroom training.</p>
+            <div class="space-y-2">
+              <button data-preset="midjourney" class="preset-btn w-full text-left rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 hover:border-cyan-400/50 hover:bg-slate-900 transition group">
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-lg bg-rose-500/15 text-rose-300 grid place-items-center"><i class="fa-solid fa-user"></i></span>
+                  <span>
+                    <span class="block text-sm text-white group-hover:text-cyan-200">Demo: Midjourney v6 Portrait</span>
+                    <span class="block text-[11px] text-slate-400">Diffusion still · EXIF stripped</span>
+                  </span>
+                </div>
+              </button>
+              <button data-preset="voice" class="preset-btn w-full text-left rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 hover:border-cyan-400/50 hover:bg-slate-900 transition group">
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-300 grid place-items-center"><i class="fa-solid fa-waveform-lines"></i></span>
+                  <span>
+                    <span class="block text-sm text-white group-hover:text-cyan-200">Demo: Voice Clone (.wav)</span>
+                    <span class="block text-[11px] text-slate-400">Neural vocoder · 16 kHz cutoff</span>
+                  </span>
+                </div>
+              </button>
+              <button data-preset="deepfake" class="preset-btn w-full text-left rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3 hover:border-cyan-400/50 hover:bg-slate-900 transition group">
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-lg bg-indigo-500/15 text-indigo-300 grid place-items-center"><i class="fa-solid fa-clapperboard"></i></span>
+                  <span>
+                    <span class="block text-sm text-white group-hover:text-cyan-200">Demo: Deepfake Video Frame</span>
+                    <span class="block text-[11px] text-slate-400">Face-swap · temporal flicker</span>
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-5 text-xs text-slate-400 leading-relaxed">
+            <i class="fa-solid fa-scale-balanced text-cyan-300 mr-1"></i>
+            Demo outputs are illustrative forensic mockups for product evaluation. Production ingestion uses isolated sandboxes and never trains on reporter uploads.
+          </div>
+        </aside>
+
+        <!-- RIGHT -->
+        <div class="lg:col-span-8">
+          <div class="glass rounded-2xl p-5 md:p-6 shadow-panel min-h-[720px]">
+            <div class="flex items-center justify-between mb-5">
+              <h2 class="text-sm font-semibold text-white tracking-wide">Analysis Dashboard</h2>
+              <span id="jobId" class="font-mono text-[11px] text-slate-500">JOB — idle</span>
+            </div>
+            <div id="dashboard"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API DOCS -->
+    <section id="api" class="max-w-[1440px] mx-auto px-6 pb-20">
+      <div class="glass rounded-2xl p-8">
+        <h2 class="text-2xl font-semibold text-white">API Docs</h2>
+        <p class="text-slate-400 mt-2 max-w-2xl">REST ingest for newsroom CMS pipelines. Authenticate with a reporter token. Rate limit: 120 scans / hour on the newsroom tier.</p>
+        <pre class="mt-6 rounded-xl bg-slate-950/80 border border-slate-800 p-5 text-xs font-mono text-cyan-200 overflow-x-auto">{
+  "POST": "/v2/forensics/analyze",
+  "headers": { "Authorization": "Bearer &lt;token&gt;" },
+  "body": { "source": "https://cdn.example/frame.jpg", "modalities": ["image","c2pa","web-index"] }
+}</pre>
+        <div class="mt-4 grid md:grid-cols-3 gap-3 text-sm">
+          <div class="rounded-lg border border-slate-700 p-4"><div class="text-slate-400 text-xs">Endpoint</div><div class="text-white mt-1">api.verimedia.portal/v2</div></div>
+          <div class="rounded-lg border border-slate-700 p-4"><div class="text-slate-400 text-xs">Auth</div><div class="text-white mt-1">OAuth2 + mTLS optional</div></div>
+          <div class="rounded-lg border border-slate-700 p-4"><div class="text-slate-400 text-xs">SLA</div><div class="text-white mt-1">99.9% uptime · 3s p50</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="relative z-10 border-t border-slate-800 bg-ink-950/80">
+    <div class="max-w-[1440px] mx-auto px-6 py-10 flex flex-col md:flex-row gap-6 md:items-center justify-between">
+      <div class="text-sm text-slate-400">
+        © 2026 VeriMedia Portal. Built for professional fact-checkers.
+      </div>
+      <nav class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
+        <a href="#legal-tos" class="hover:text-cyan-300 footer-link" data-legal="tos">Terms of Service</a>
+        <a href="#legal-method" class="hover:text-cyan-300 footer-link" data-legal="method">Fact-Checking Methodology</a>
+        <a href="#legal-c2pa" class="hover:text-cyan-300 footer-link" data-legal="c2pa">C2PA Standards</a>
+        <a href="#legal-support" class="hover:text-cyan-300 footer-link" data-legal="support">Contact Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="hidden fixed inset-0 z-[80] grid place-items-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="glass w-full max-w-md rounded-2xl p-6 shadow-panel">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-white font-semibold">Reporter Login</h3>
+        <button id="closeLogin" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <label class="text-xs text-slate-400">Newsroom email</label>
+      <input id="loginEmail" type="email" value="desk@newsroom.example" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm mb-3 outline-none focus:border-cyan-400" />
+      <label class="text-xs text-slate-400">Access key</label>
+      <input type="password" value="••••••••••••" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm mb-4 outline-none focus:border-cyan-400" />
+      <button id="doLogin" class="w-full rounded-lg bg-cyan-400 text-ink-950 font-semibold py-2.5">Sign in to newsroom desk</button>
+      <p id="loginMsg" class="hidden mt-3 text-xs text-emerald-300">Session established. Role: Senior Verifier.</p>
+    </div>
+  </div>
+
+  <!-- LEGAL MODAL -->
+  <div id="legalModal" class="hidden fixed inset-0 z-[80] grid place-items-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="glass w-full max-w-lg rounded-2xl p-6 shadow-panel">
+      <div class="flex justify-between items-center mb-3">
+        <h3 id="legalTitle" class="text-white font-semibold"></h3>
+        <button id="closeLegal" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p id="legalBody" class="text-sm text-slate-300 leading-relaxed"></p>
+    </div>
+  </div>
+
+  <script>
+    const STEPS = [
+      '[1/3] Extracting EXIF & C2PA Metadata...',
+      '[2/3] Running Neural Anomaly Heatmap...',
+      '[3/3] Cross-referencing Web Index for Source Traceability...'
+    ];
+
+    const CASES = {
+      midjourney: {
+        mode: 'Image Forensics',
+        filename: 'mj_v6_portrait_casefile.png',
+        type: 'image',
+        score: 94,
+        label: '94% Synthetic / High Risk',
+        risk: 'high',
+        visualTitle: 'Still · RGB 1024×1024',
+        evidence: [
+          'Inconsistent specular reflections in pupils',
+          'Missing C2PA cryptographically signed metadata',
+          'Frequency cutoff detected at 16kHz typical of diffusion models',
+          'Repeating micro-texture in hair strands (latent diffusion artifact)',
+          'EXIF maker/model fields stripped; software tag empty'
+        ],
+        firstSeen: '2026-03-12 08:41 UTC',
+        watermark: 'No SynthID / Content Credentials match',
+        credibility: 'Low — first indexed on anonymous CDN, 0 verified publishers'
+      },
+      voice: {
+        mode: 'Audio Analyzer',
+        filename: 'briefing_clone_sample.wav',
+        type: 'audio',
+        score: 87,
+        label: '87% Synthetic / Elevated Risk',
+        risk: 'high',
+        visualTitle: 'PCM 16-bit · 16 kHz mono · 00:12',
+        evidence: [
+          'Hard spectral cutoff at 8 kHz with vocoder buzz harmonics',
+          'Missing room impulse; overly stationary noise floor',
+          'Prosody variance below human baseline on unstressed syllables',
+          'No C2PA audio manifest or broadcast chain of custody',
+          'Phase discontinuities at 20 ms neural codec frames'
+        ],
+        firstSeen: '2026-07-02 19:18 UTC',
+        watermark: 'No audio watermark / no IARPA signature',
+        credibility: 'Unverified — circulated via messaging dump, not a known outlet'
+      },
+      deepfake: {
+        mode: 'Video Scan',
+        filename: 'presser_frame_00482.jpg',
+        type: 'video',
+        score: 91,
+        label: '91% Synthetic / High Risk',
+        risk: 'high',
+        visualTitle: 'Video frame · 1920×1080 · t=00:12.08',
+        evidence: [
+          'Boundary flicker along jawline vs. neck illumination',
+          'Eye-blink cadence irregular versus interview baseline',
+          'Compression residual mismatch between face ROI and background GOP',
+          'Missing C2PA cryptographically signed metadata',
+          'Face embedding nearest-neighbor: known public figure, identity swap likely'
+        ],
+        firstSeen: '2026-08-21 14:03 UTC',
+        watermark: 'Partial invisible watermark — inconclusive',
+        credibility: 'Medium-low — mirrored on 4 low-trust aggregators'
+      },
+      authentic: {
+        mode: 'Image Forensics',
+        filename: 'field_photo_original.jpg',
+        type: 'image',
+        score: 12,
+        label: '12% Synthetic / Low Risk',
+        risk: 'low',
+        visualTitle: 'Camera still · 4000×2667',
+        evidence: [
+          'Intact EXIF: Canon EOS, lens serial, GPS within reported venue',
+          'C2PA manifest present and signature valid',
+          'Natural photon noise; no diffusion frequency cutoff',
+          'Specular highlights physically consistent with on-scene lighting'
+        ],
+        firstSeen: '2026-01-09 11:02 UTC',
+        watermark: 'C2PA Content Credentials verified',
+        credibility: 'High — originating domain is a known newsroom CMS'
+      }
+    };
+
+    const dashboard = document.getElementById('dashboard');
+    const jobId = document.getElementById('jobId');
+    const fileLabel = document.getElementById('fileLabel');
+    const modeChip = document.getElementById('modeChip');
+    const urlInput = document.getElementById('urlInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    let currentCase = null;
+    let heatmapOn = false;
+    let analyzing = false;
+    let uploadedFile = null;
+    let selectedPreset = null;
+    let warningTimer = null;
+
+    function showWarning(message = 'Please upload media, paste a URL, or select a demo preset first.') {
+      clearWarning();
+      const container = analyzeBtn.parentElement;
+      if (!container) return;
+
+      const alert = document.createElement('div');
+      alert.id = 'inputWarningAlert';
+      alert.className = 'mt-2.5 flex items-center gap-2 rounded-lg border border-rose-500/50 bg-rose-500/15 px-3.5 py-2.5 text-xs font-medium text-rose-300 shadow-lg shadow-rose-950/40 transition-all duration-300';
+      alert.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-400 text-sm shrink-0"></i><span>${message}</span>`;
+      if (typeof container.after === 'function') {
+        container.after(alert);
+      } else if (container.parentElement) {
+        container.parentElement.appendChild(alert);
+      } else {
+        container.appendChild(alert);
+      }
+
+      urlInput.classList.add('border-rose-500/80');
+
+      warningTimer = setTimeout(() => {
+        clearWarning();
+      }, 4000);
+    }
+
+    function clearWarning() {
+      if (warningTimer) {
+        clearTimeout(warningTimer);
+        warningTimer = null;
+      }
+      const existing = document.getElementById('inputWarningAlert');
+      if (existing) {
+        existing.remove();
+      }
+      if (urlInput) {
+        urlInput.classList.remove('border-rose-500/80');
+      }
+    }
+
+    function selectPreset(presetKey) {
+      selectedPreset = presetKey;
+      uploadedFile = null;
+      urlInput.value = '';
+      clearWarning();
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        if (btn.dataset.preset === presetKey) {
+          btn.classList.add('border-cyan-400', 'bg-slate-900', 'ring-1', 'ring-cyan-400/50');
+        } else {
+          btn.classList.remove('border-cyan-400', 'bg-slate-900', 'ring-1', 'ring-cyan-400/50');
+        }
+      });
+    }
+
+    function deselectPresets() {
+      selectedPreset = null;
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.remove('border-cyan-400', 'bg-slate-900', 'ring-1', 'ring-cyan-400/50');
+      });
+    }
+
+    function idleView() {
+      dashboard.innerHTML = `
+        <div class="h-[640px] rounded-xl border border-slate-800 bg-slate-950/40 grid place-items-center text-center px-8">
+          <div>
+            <div class="mx-auto w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-400/20 grid place-items-center mb-4">
+              <i class="fa-solid fa-microscope text-cyan-300 text-2xl"></i>
+            </div>
+            <h3 class="text-white text-lg font-medium">Awaiting ingest</h3>
+            <p class="text-slate-400 text-sm mt-2 max-w-md">Drop a file, paste a URL, or run a Quick Preset. The verification desk will extract provenance, run anomaly heatmaps, and score synthetic probability.</p>
+          </div>
+        </div>`;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function buildCustomCase({ file, url }) {
+      const isFile = !!file;
+      const inputStr = isFile ? file.name : url;
+      const len = inputStr.length;
+
+      // Believable calculated score depending on input length (e.g. 18% or 76%)
+      const isHighRisk = (len % 2 !== 0);
+      const score = isHighRisk ? 76 : 18;
+      const risk = isHighRisk ? 'high' : 'low';
+      const label = isHighRisk ? `${score}% Synthetic / Elevated Risk` : `${score}% Synthetic / Low Risk (Likely Authentic)`;
+
+      let name = isFile ? file.name : (url.split('/').pop()?.split('?')[0] || 'remote-asset');
+      if (!name.trim()) name = 'remote-asset';
+
+      const lower = (name + ' ' + (file?.type || '') + ' ' + (url || '')).toLowerCase();
+      let type = 'image';
+      let mode = 'Image Forensics';
+
+      if (lower.match(/\.(wav|mp3|ogg|aac|flac|m4a)(\?.*)?$/) || lower.includes('audio') || (file?.type && file.type.startsWith('audio/'))) {
+        type = 'audio';
+        mode = 'Audio Analyzer';
+      } else if (lower.match(/\.(mp4|webm|mov|avi|mkv)(\?.*)?$/) || lower.includes('video') || (file?.type && file.type.startsWith('video/'))) {
+        type = 'video';
+        mode = 'Video Scan';
+      }
+
+      let customPreview = null;
+      if (isFile && file.type && file.type.startsWith('image/')) {
+        try {
+          customPreview = URL.createObjectURL(file);
+        } catch (e) {
+          customPreview = null;
+        }
+      }
+
+      let evidence = [];
+      if (type === 'audio') {
+        if (isHighRisk) {
+          evidence = [
+            'Phase discontinuity artifacts detected at 20ms neural vocoder frame intervals',
+            'Artificial spectral cutoff with harmonic buzzing above 8 kHz',
+            'Prosodic pitch variability falls below natural human vocal baseline',
+            'Missing room acoustic impulse response and synthetic stationary noise floor',
+            'No broadcast chain-of-custody or authentic hardware microphone profile'
+          ];
+        } else {
+          evidence = [
+            'Organic vocal tract formant transitions and natural human micro-tremors verified',
+            'Continuous physical reverberation matching a real physical acoustic environment',
+            'Dynamic audio range and harmonic decay curves consistent with analog microphone capture',
+            'No neural vocoder stitching or synthetic pitch-quantization artifacts detected',
+            'Natural background noise floor with unaligned ambient sound reflections'
+          ];
+        }
+      } else if (type === 'video') {
+        if (isHighRisk) {
+          evidence = [
+            'Inter-frame optical flow inconsistencies detected across dynamic facial boundaries',
+            'Facial ROI landmark jitter and temporal illumination mismatch with scene background',
+            'Irregular blink rate and lack of micro-saccadic ocular movement',
+            'Compression artifact disparity between face bounding box and surrounding keyframes',
+            'Generative frame-interpolation artifacts observed on fast motion vectors'
+          ];
+        } else {
+          evidence = [
+            'Temporal continuity and motion vectors physically consistent across all GOP frames',
+            'Uniform sensor noise and compression residuals between subject and background',
+            'Natural facial micro-expressions, blink cadence, and ocular refraction confirmed',
+            'Lighting vectors on subject surfaces remain physically coherent with environment sources',
+            'No spatial boundary tearing or generative face-swap blending seams detected'
+          ];
+        }
+      } else {
+        // image
+        if (isHighRisk) {
+          evidence = [
+            'Latent diffusion grid artifacts detected in high-frequency spatial gradients',
+            'Inconsistent photon noise distribution across color channels (non-sensor origin)',
+            'Frequency domain transform reveals periodic synthesis patterns typical of generative models',
+            'Missing C2PA cryptographically signed provenance manifest and camera serial tags',
+            'Edge transition sharpness exceeds optical limits of physical camera lenses'
+          ];
+        } else {
+          evidence = [
+            'Consistent photon shot noise and Poisson distribution verified across all RGB channels',
+            'Physical lens optics verified: natural chromatic aberration and depth-of-field falloff',
+            'Sensor pattern noise (PRNU) matches standard commercial CMOS hardware response',
+            'No latent diffusion micro-textures or frequency-domain generative signatures detected',
+            'Cryptographic file structure consistent with direct camera hardware output'
+          ];
+        }
+      }
+
+      const now = new Date();
+      const dateStr = now.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+
+      let visualTitle = '';
+      if (isFile) {
+        const sizeStr = file.size ? (file.size > 1048576 ? (file.size / 1048576).toFixed(1) + ' MB' : (file.size / 1024).toFixed(0) + ' KB') : 'Local file';
+        visualTitle = `${mode} · ${name} · ${sizeStr}`;
+      } else {
+        let hostname = 'remote-host';
+        if (url) {
+          try {
+            hostname = new URL(url.startsWith('http') ? url : 'https://' + url).hostname;
+          } catch (e) {
+            hostname = url.split('/')[0] || 'web-source';
+          }
+        }
+        visualTitle = `Source URL · ${name} · ${hostname}`;
+      }
+
+      const watermark = isHighRisk
+        ? 'No SynthID or C2PA credentials detected · Unsigned asset'
+        : 'Camera hardware signature verified · C2PA manifest valid';
+
+      let credibility = '';
+      if (isFile) {
+        credibility = isHighRisk
+          ? 'Unverified — Direct local upload, metadata headers stripped or missing'
+          : 'High — Local hardware capture with intact original metadata headers';
+      } else {
+        let hostname = 'external domain';
+        try {
+          hostname = new URL(url.startsWith('http') ? url : 'https://' + url).hostname;
+        } catch (e) {
+          hostname = 'remote host';
+        }
+        credibility = isHighRisk
+          ? `Low — First indexed on unverified endpoint (${hostname}), 0 verified publishers`
+          : `High — Domain (${hostname}) matches registered authoritative media index`;
+      }
+
+      return {
+        isCustom: true,
+        customPreview,
+        mode,
+        filename: name,
+        type,
+        score,
+        label,
+        risk,
+        visualTitle,
+        evidence,
+        firstSeen: `Ingested ${dateStr}`,
+        watermark,
+        credibility
+      };
+    }
+
+    async function runScan(keyOrCase) {
+      if (analyzing) return;
+      analyzing = true;
+      const data = typeof keyOrCase === 'string' ? CASES[keyOrCase] : keyOrCase;
+      if (currentCase && currentCase.customPreview && currentCase.customPreview.startsWith('blob:')) {
+        try { URL.revokeObjectURL(currentCase.customPreview); } catch (e) {}
+      }
+      currentCase = data;
+      heatmapOn = false;
+      modeChip.textContent = data.mode;
+      fileLabel.textContent = data.filename;
+      const id = 'VM-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      jobId.textContent = 'JOB ' + id + ' · scanning';
+
+      dashboard.innerHTML = `
+        <div class="rounded-xl border border-cyan-500/20 bg-black/50 overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-2 border-b border-slate-800 text-[11px] text-slate-400 font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 status-pulse"></span>
+            verimedia-engine · tty0 · ${id}
+          </div>
+          <div id="term" class="p-5 font-mono text-sm text-emerald-300/90 min-h-[280px] space-y-2 term-cursor"></div>
+          <div class="px-5 pb-4">
+            <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <div id="bar" class="h-full w-0 bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-1000"></div>
+            </div>
+          </div>
+        </div>`;
+
+      const term = document.getElementById('term');
+      const bar = document.getElementById('bar');
+      const widths = ['34%', '68%', '100%'];
+      for (let i = 0; i < STEPS.length; i++) {
+        const line = document.createElement('div');
+        line.textContent = STEPS[i];
+        term.appendChild(line);
+        bar.style.width = widths[i];
+        await sleep(1000);
+      }
+      term.classList.remove('term-cursor');
+      const done = document.createElement('div');
+      done.className = 'text-cyan-300';
+      done.textContent = '[ok] Pipeline complete · assembling verification dashboard';
+      term.appendChild(done);
+      await sleep(280);
+      renderResults(data, id);
+      analyzing = false;
+    }
+
+    function riskColor(risk, score) {
+      if (score >= 70 || risk === 'high') return { ring: '#f43f5e', chip: 'bg-rose-500/15 text-rose-300 border-rose-400/30', text: 'text-rose-300' };
+      if (score >= 40) return { ring: '#f59e0b', chip: 'bg-amber-500/15 text-amber-300 border-amber-400/30', text: 'text-amber-300' };
+      return { ring: '#34d399', chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30', text: 'text-emerald-300' };
+    }
+
+    function mediaArt(data) {
+      if (data.customPreview) {
+        return `<img src="${data.customPreview}" alt="${data.filename}" class="w-full h-full object-contain bg-slate-950" />`;
+      }
+      if (data.type === 'audio') {
+        return `<svg viewBox="0 0 640 360" class="w-full h-full">${
+          Array.from({length: 64}, (_, i) => {
+            const h = 40 + Math.abs(Math.sin(i * 0.45)) * 180 + (i % 7) * 6;
+            return `<rect x="${8 + i * 9.8}" y="${180 - h/2}" width="6" height="${h}" rx="2" fill="${i > 40 ? '#f43f5e' : '#22d3ee'}" opacity=".85"/>`;
+          }).join('')
+        }</svg>`;
+      }
+      if (data.type === 'video') {
+        const frameLabel = data.isCustom ? `ANALYSIS STREAM · ${data.filename.slice(0, 30)}` : 'FRAME 00482 · 29.97fps';
+        return `<svg viewBox="0 0 640 360" class="w-full h-full">
+          <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#1e1b4b"/><stop offset="1" stop-color="#0e7490"/></linearGradient></defs>
+          <rect width="640" height="360" fill="url(#g)"/>
+          <ellipse cx="320" cy="150" rx="70" ry="86" fill="#fde68a"/>
+          <rect x="250" y="230" width="140" height="130" rx="20" fill="#334155"/>
+          <circle cx="298" cy="138" r="10" fill="#0f172a"/><circle cx="342" cy="138" r="10" fill="#0f172a"/>
+          <path d="M300 168 Q320 184 340 168" stroke="#0f172a" fill="none" stroke-width="3"/>
+          <text x="24" y="36" fill="#67e8f9" font-size="13" font-family="monospace">${frameLabel}</text>
+        </svg>`;
+      }
+      if (data.isCustom) {
+        return `<svg viewBox="0 0 640 360" class="w-full h-full">
+          <defs>
+            <linearGradient id="gridGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#090d16"/>
+              <stop offset="100%" stop-color="#111827"/>
+            </linearGradient>
+            <pattern id="reticle" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(34,211,238,0.12)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="640" height="360" fill="url(#gridGrad)"/>
+          <rect width="640" height="360" fill="url(#reticle)"/>
+          <circle cx="320" cy="180" r="80" fill="none" stroke="rgba(99,102,241,0.35)" stroke-width="1.5" stroke-dasharray="6 4"/>
+          <circle cx="320" cy="180" r="30" fill="none" stroke="rgba(34,211,238,0.5)" stroke-width="1.5"/>
+          <path d="M 320 50 L 320 310 M 160 180 L 480 180" stroke="rgba(34,211,238,0.2)" stroke-width="1"/>
+          <rect x="220" y="100" width="200" height="160" rx="8" fill="none" stroke="rgba(244,63,94,0.4)" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <text x="28" y="40" fill="#67e8f9" font-size="13" font-family="monospace">CUSTOM MEDIA INGEST · ${data.filename.slice(0, 30)}</text>
+          <text x="28" y="330" fill="#94a3b8" font-size="11" font-family="monospace">Neural ROI Extraction · Spectral Transform Active</text>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 640 360" class="w-full h-full">
+        <defs><radialGradient id="skin" cx=".45" cy=".35"><stop stop-color="#f5d0c5"/><stop offset="1" stop-color="#c08457"/></radialGradient></defs>
+        <rect width="640" height="360" fill="#0f172a"/>
+        <rect x="180" y="20" width="280" height="320" rx="8" fill="#111827"/>
+        <ellipse cx="320" cy="150" rx="78" ry="96" fill="url(#skin)"/>
+        <path d="M250 250 Q320 310 390 250" fill="#1e293b"/>
+        <circle cx="292" cy="140" r="12" fill="#1e293b"/><circle cx="348" cy="140" r="12" fill="#1e293b"/>
+        <circle cx="296" cy="138" r="4" fill="#e0f2fe"/><circle cx="344" cy="138" r="4" fill="#e0f2fe"/>
+        <text x="200" y="340" fill="#64748b" font-size="12" font-family="monospace">MJ v6 · latent still</text>
+      </svg>`;
+    }
+
+    function renderResults(data, id) {
+      const c = riskColor(data.risk, data.score);
+      const circ = 2 * Math.PI * 54;
+      const dash = circ * (data.score / 100);
+      jobId.textContent = 'JOB ' + id + ' · complete';
+      dashboard.innerHTML = `
+        <div class="space-y-5" id="reportRoot">
+          <div class="grid md:grid-cols-5 gap-4">
+            <div class="md:col-span-2 rounded-xl border border-slate-800 bg-slate-950/50 p-5 flex items-center gap-5">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="#1e293b" stroke-width="12"/>
+                <circle class="gauge-ring" cx="70" cy="70" r="54" fill="none" stroke="${c.ring}" stroke-width="12"
+                  stroke-linecap="round" stroke-dasharray="${dash} ${circ}" />
+                <text x="70" y="66" text-anchor="middle" fill="white" font-size="28" font-weight="700">${data.score}%</text>
+                <text x="70" y="86" text-anchor="middle" fill="#94a3b8" font-size="10">SYNTHETIC</text>
+              </svg>
+              <div>
+                <div class="text-[11px] uppercase tracking-widest text-slate-400">Authenticity Scorecard</div>
+                <div class="text-lg font-semibold ${c.text} mt-1">${data.label}</div>
+                <div class="mt-2 inline-flex text-[11px] border rounded-full px-2 py-0.5 ${c.chip}">Neural ensemble v2.4</div>
+              </div>
+            </div>
+            <div class="md:col-span-3 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <div class="text-[11px] uppercase tracking-widest text-slate-400">Forensic Visualizer</div>
+                  <div class="text-xs text-slate-500">${data.visualTitle}</div>
+                </div>
+                <button id="heatBtn" class="text-xs rounded-lg border border-cyan-400/40 px-3 py-1.5 text-cyan-200 hover:bg-cyan-400/10">
+                  <i class="fa-solid fa-fire mr-1"></i>Toggle Noise Anomaly Heatmap
+                </button>
+              </div>
+              <div id="viz" class="relative overflow-hidden rounded-lg h-48 bg-black border border-slate-800">
+                <div id="mediaInner" class="absolute inset-0 flex items-center justify-center">${mediaArt(data)}</div>
+                <div id="heatLayer" class="heatmap-overlay absolute inset-0 pointer-events-none"></div>
+                <div class="scanline pointer-events-none"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h3 class="text-sm font-semibold text-white mb-3"><i class="fa-solid fa-brain text-indigo-300 mr-2"></i>Explainable AI Reasoning</h3>
+              <ul class="space-y-2 text-sm text-slate-300">
+                ${data.evidence.map(e => `<li class="flex gap-2"><i class="fa-solid fa-caret-right text-cyan-400 mt-1"></i><span>${e}</span></li>`).join('')}
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h3 class="text-sm font-semibold text-white mb-3"><i class="fa-solid fa-globe text-cyan-300 mr-2"></i>Source Traceability &amp; Credibility</h3>
+              <table class="w-full text-sm">
+                <tbody class="divide-y divide-slate-800">
+                  <tr><td class="py-2 text-slate-400 pr-3">First seen on web date</td><td class="py-2 text-white font-mono text-xs">${data.firstSeen}</td></tr>
+                  <tr><td class="py-2 text-slate-400 pr-3">Digital watermark match status</td><td class="py-2 text-white">${data.watermark}</td></tr>
+                  <tr><td class="py-2 text-slate-400 pr-3">Source Domain Credibility</td><td class="py-2 text-white">${data.credibility}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button id="exportBtn" class="rounded-lg bg-white text-ink-950 font-semibold px-4 py-2 text-sm hover:bg-slate-200">
+              <i class="fa-solid fa-file-pdf mr-2"></i>Export Forensic Report (PDF)
+            </button>
+            <button id="citeBtn" class="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-white/5">
+              <i class="fa-solid fa-quote-right mr-2"></i>Copy Citation
+            </button>
+            <span id="citeMsg" class="self-center text-xs text-emerald-300 hidden">Citation copied to clipboard.</span>
+          </div>
+        </div>`;
+
+      document.getElementById('heatBtn').onclick = () => {
+        heatmapOn = !heatmapOn;
+        document.getElementById('heatLayer').classList.toggle('active', heatmapOn);
+        document.getElementById('mediaInner').classList.toggle('heatmap-on', heatmapOn);
+      };
+      document.getElementById('exportBtn').onclick = () => exportPdf(data, id);
+      document.getElementById('citeBtn').onclick = () => {
+        const cite = `VeriMedia Portal (2026). Forensic analysis of "${data.filename}". Synthetic probability ${data.score}%. Job ${id}.`;
+        navigator.clipboard.writeText(cite).then(() => {
+          const m = document.getElementById('citeMsg');
+          m.classList.remove('hidden');
+          setTimeout(() => m.classList.add('hidden'), 2200);
+        });
+      };
+    }
+
+    function exportPdf(data, id) {
+      const w = window.open('', '_blank');
+      w.document.write(`<!DOCTYPE html><html><head><title>VeriMedia Forensic Report ${id}</title>
+        <style>body{font-family:Segoe UI,sans-serif;padding:40px;color:#111}h1{margin:0}table{width:100%;border-collapse:collapse}td{border-top:1px solid #ddd;padding:8px}</style>
+        </head><body>
+        <h1>VeriMedia Portal — Forensic Report</h1>
+        <p>Job ${id} · ${new Date().toUTCString()}</p>
+        <p><strong>${data.label}</strong> · File: ${data.filename}</p>
+        <h3>Evidence</h3><ul>${data.evidence.map(e=>'<li>'+e+'</li>').join('')}</ul>
+        <h3>Traceability</h3>
+        <table>
+          <tr><td>First seen</td><td>${data.firstSeen}</td></tr>
+          <tr><td>Watermark</td><td>${data.watermark}</td></tr>
+          <tr><td>Credibility</td><td>${data.credibility}</td></tr>
+        </table>
+        <p style="margin-top:32px;font-size:12px;color:#666">Print this dialog and choose “Save as PDF”.</p>
+        </body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    idleView();
+
+    // Demo Preset Buttons
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const presetKey = btn.dataset.preset;
+        selectPreset(presetKey);
+        runScan(presetKey);
+      });
+    });
+
+    // Main Analyze Button
+    analyzeBtn.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      const hasUrl = url.length > 0;
+      const hasFile = !!uploadedFile;
+      const hasPreset = !!selectedPreset;
+
+      // 1. Check User Input on "Analyze":
+      // If NO file, URL, or preset is selected, DO NOT run the analysis.
+      // Show a temporary red warning toast/alert near the input:
+      // "Please upload media, paste a URL, or select a demo preset first."
+      if (!hasUrl && !hasFile && !hasPreset) {
+        showWarning('Please upload media, paste a URL, or select a demo preset first.');
+        return;
+      }
+
+      // 2. Handle Real/Custom Input vs Presets:
+      if (hasUrl) {
+        deselectPresets();
+        uploadedFile = null;
+        fileLabel.textContent = 'No file selected';
+        clearWarning();
+        const customData = buildCustomCase({ url });
+        runScan(customData);
+      } else if (hasFile) {
+        deselectPresets();
+        clearWarning();
+        const customData = buildCustomCase({ file: uploadedFile });
+        runScan(customData);
+      } else if (hasPreset) {
+        clearWarning();
+        runScan(selectedPreset);
+      }
+    });
+
+    // URL Input Interactions
+    urlInput.addEventListener('input', () => {
+      clearWarning();
+      if (urlInput.value.trim().length > 0) {
+        deselectPresets();
+        uploadedFile = null;
+        fileLabel.textContent = 'No file selected';
+      }
+    });
+
+    urlInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        analyzeBtn.click();
+      }
+    });
+
+    // File Upload / Dropzone Interactions
+    const dz = document.getElementById('dropzone');
+    const fi = document.getElementById('fileInput');
+
+    function handleFileUpload(file) {
+      uploadedFile = file;
+      deselectPresets();
+      urlInput.value = '';
+      fileLabel.textContent = file.name;
+      clearWarning();
+      const customData = buildCustomCase({ file });
+      runScan(customData);
+    }
+
+    dz.addEventListener('click', () => fi.click());
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drop-active'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drop-active'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.classList.remove('drop-active');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      handleFileUpload(file);
+    });
+    fi.addEventListener('change', () => {
+      const file = fi.files[0];
+      if (!file) return;
+      handleFileUpload(file);
+    });
+
+    // Nav Links
+    document.querySelectorAll('[data-nav]').forEach(a => {
+      a.addEventListener('click', () => {
+        document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+        a.classList.add('active');
+        const map = { home: 'Image Forensics', image: 'Image Forensics', audio: 'Audio Analyzer', video: 'Video Scan', api: 'API Docs' };
+        if (map[a.dataset.nav]) modeChip.textContent = map[a.dataset.nav];
+        if (a.dataset.nav === 'audio') { selectPreset('voice'); runScan('voice'); }
+        if (a.dataset.nav === 'video') { selectPreset('deepfake'); runScan('deepfake'); }
+        if (a.dataset.nav === 'image') { selectPreset('midjourney'); runScan('midjourney'); }
+      });
+    });
+
+    const loginModal = document.getElementById('loginModal');
+    document.getElementById('loginBtn').onclick = () => loginModal.classList.remove('hidden');
+    document.getElementById('closeLogin').onclick = () => loginModal.classList.add('hidden');
+    document.getElementById('doLogin').onclick = () => {
+      document.getElementById('loginMsg').classList.remove('hidden');
+      document.getElementById('loginBtn').innerHTML = '<i class="fa-solid fa-circle-check mr-1.5 text-emerald-300"></i>Desk session';
+      setTimeout(() => loginModal.classList.add('hidden'), 700);
+    };
+    loginModal.addEventListener('click', e => { if (e.target === loginModal) loginModal.classList.add('hidden'); });
+
+    const legal = {
+      tos: ['Terms of Service', 'VeriMedia Portal is provided for journalistic verification. Do not use outputs as sole legal evidence. Uploads are processed in-session for this demo and are not persisted to a production archive.'],
+      method: ['Fact-Checking Methodology', 'Analysts combine provenance (C2PA/EXIF), spatial-frequency anomaly maps, and open-web first-seen indexes. High-risk scores require two independent modalities before publication of a “synthetic” call.'],
+      c2pa: ['C2PA Standards', 'We parse Coalition for Content Provenance and Authenticity manifests, validate cryptographic signatures, and surface unsigned assets as a risk factor—not proof of fabrication by itself.'],
+      support: ['Contact Support', 'Newsroom desk: support@verimedia.portal · On-call forensics: +1 (800) 555-0199 · PGP available on request for sensitive casefiles.']
+    };
+    const legalModal = document.getElementById('legalModal');
+    document.querySelectorAll('.footer-link').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const [t, b] = legal[a.dataset.legal];
+        document.getElementById('legalTitle').textContent = t;
+        document.getElementById('legalBody').textContent = b;
+        legalModal.classList.remove('hidden');
+      });
+    });
+    document.getElementById('closeLegal').onclick = () => legalModal.classList.add('hidden');
+    document.getElementById('legalModal').addEventListener('click', e => { if (e.target === legalModal) legalModal.classList.add('hidden'); });
+  </script>
+</body>
+</html>
